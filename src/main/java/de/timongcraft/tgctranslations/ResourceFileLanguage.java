@@ -47,7 +47,7 @@ public class ResourceFileLanguage implements Language {
         this.namespace = namespace.endsWith(":") ? namespace : namespace + ":";
         this.locale = locale;
 
-        try (InputStream resourceStream = getClass().getClassLoader()
+        try (InputStream resourceStream = keyManager.getClass().getClassLoader()
                 .getResourceAsStream("lang/" + languageFileName)) {
 
             loadTranslations(resourceStream, "resources", languageFileName);

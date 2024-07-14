@@ -57,7 +57,7 @@ When using Maven, make sure to build directly with Maven and not with your IDE c
 
 ```groovy
 plugins {
-    id 'io.github.goooler.shadow' version '8.1.7'
+    id 'io.github.goooler.shadow' version '8.1.8'
 }
 
 repositories {
