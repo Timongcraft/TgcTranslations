@@ -1,4 +1,4 @@
-package de.timongcraft.tgctranslations;
+package de.timongcraft.tgctranslations.lang;
 
 import java.util.Locale;
 
@@ -15,7 +15,7 @@ public interface Language {
     /**
      * Translates the given translation key to its corresponding value.
      * <p>
-     * Note: The value may be in {@link net.kyori.adventure.text.minimessage.MiniMessage} format.
+     * Note: The value may use {@link net.kyori.adventure.text.minimessage.MiniMessage} formatting.
      */
     String translate(String translationKey);
 

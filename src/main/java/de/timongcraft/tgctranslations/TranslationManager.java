@@ -1,5 +1,8 @@
 package de.timongcraft.tgctranslations;
 
+import de.timongcraft.tgctranslations.lang.Language;
+import de.timongcraft.tgctranslations.lang.StreamBasedLanguage;
+import de.timongcraft.tgctranslations.utils.ResourceUtils;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
@@ -11,9 +14,20 @@ import net.kyori.adventure.translation.TranslationRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -28,49 +42,75 @@ public class TranslationManager implements TranslationRegistry {
     private final Logger logger;
     private final TranslationKeyManager keyManager;
     private final Key identificationKey;
-    private final @Nullable Path overridePath;
-    private Locale defaultLocale = Locale.US;
+    private final String resourceFolderPath;
+    private final @Nullable Path overridesFolderPath;
+    private Locale defaultLocale = Locale.getDefault();
 
     /**
      * Constructs a new {@code TranslationManager}.
      *
-     * @param logger            the logger for logging errors while loading {@link ResourceFileLanguage}s
-     * @param keyManager        the manager for checking translation keys
-     * @param identificationKey the {@link Key} identifying this translation manager
-     * @param overridePath      the {@link Path} to the override language folder (null to disable overrides)
+     * @param logger              the logger used to report issues during language loading
+     * @param keyManager          the translation key manager used to validate keys
+     * @param identificationKey   the {@link Key} identifying this translation manager
+     * @param overridesFolderPath the {@link Path} to the overrides language folder (null to disable overrides)
      */
-    public TranslationManager(Logger logger, TranslationKeyManager keyManager, Key identificationKey, @Nullable Path overridePath) {
+    public TranslationManager(Logger logger, TranslationKeyManager keyManager, Key identificationKey,
+                              String resourceFolderPath,
+                              @Nullable Path overridesFolderPath) {
         this.logger = Objects.requireNonNull(logger, "logger");
         this.keyManager = Objects.requireNonNull(keyManager, "keyManager");
         this.identificationKey = Objects.requireNonNull(identificationKey, "identificationKey");
-        this.overridePath = Objects.requireNonNull(overridePath, "overridePath");
+        this.resourceFolderPath = Objects.requireNonNull(resourceFolderPath, "resourceFolderPath");
+        this.overridesFolderPath = Objects.requireNonNull(overridesFolderPath, "overridesFolderPath");
     }
 
-    /**
-     * Loads a language from the specified file and locale.
-     *
-     * @param locale           the locale of the language to load
-     * @param languageFileName the name of the language file (may also be in the override {@link Path} if {@link #overridePath} is not null)
-     */
-    public void loadLanguage(Locale locale, String languageFileName) {
-        addLanguage(new ResourceFileLanguage(logger, keyManager, identificationKey.namespace(),
-                Objects.requireNonNull(locale, "locale"),
-                Objects.requireNonNull(languageFileName, "languageFileName"),
-                overridePath));
+    public void loadLanguages() {
+        Map<String, InputStream> internalDefinitions = ResourceUtils.getFileStreams(resourceFolderPath, logger);
+        Map<String, Path> overrideDefinitions = new HashMap<>();
+
+        if (overridesFolderPath != null && Files.exists(overridesFolderPath)) {
+            try (Stream<Path> paths = Files.walk(overridesFolderPath, 1)) {
+                paths.filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().endsWith(".json"))
+                        .forEach(path -> overrideDefinitions.put(path.getFileName().toString(), path));
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Unable to read language overrides from " + overridesFolderPath, e);
+            }
+        }
+
+        Set<String> combinedFileNames = new HashSet<>() {{
+            addAll(internalDefinitions.keySet());
+            addAll(overrideDefinitions.keySet());
+        }};
+
+        for (String fileName : combinedFileNames) {
+            addLanguage(new StreamBasedLanguage(
+                    logger,
+                    keyManager,
+                    identificationKey.namespace(),
+                    Locale.forLanguageTag(fileName.substring(0, fileName.length() - 5).replace("_", "-")),
+                    internalDefinitions.get(fileName),
+                    overrideDefinitions.get(fileName)
+            ));
+        }
     }
 
     /**
      * Registers this translation manager to be used in global translations.
      */
-    public void register() {
+    public void load() {
+        loadLanguages();
+
         GlobalTranslator.translator().addSource(this);
     }
 
     /**
      * Unregisters this translation manager from global translations.
      */
-    public void unregister() {
+    public void unload() {
         GlobalTranslator.translator().removeSource(this);
+
+        languages.clear();
     }
 
     /**
@@ -102,7 +142,7 @@ public class TranslationManager implements TranslationRegistry {
      */
     @Override
     public Component translate(TranslatableComponent component, @NotNull Locale locale) {
-        final String literalTranslation = translate0(component.key(), locale);
+        final String literalTranslation = translateLiteral(component.key(), locale);
         if (literalTranslation == null) return null;
 
         Component resultingComponent;
@@ -134,6 +174,17 @@ public class TranslationManager implements TranslationRegistry {
         }
     }
 
+    private String translateLiteral(String key, Locale locale) {
+        if (!contains(key)) return null;
+        Language language = languages.get(locale);
+        if (language == null) {
+            if (locale == defaultLocale) return null;
+            return translateLiteral(key, defaultLocale);
+        }
+
+        return language.translate(key);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -147,7 +198,7 @@ public class TranslationManager implements TranslationRegistry {
      */
     @Override
     public void register(@NotNull String key, @NotNull Locale locale, @NotNull MessageFormat format) {
-        throw new IllegalStateException("Unsupported operation");
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -155,7 +206,7 @@ public class TranslationManager implements TranslationRegistry {
      */
     @Override
     public void unregister(@NotNull String key) {
-        throw new IllegalStateException("Unsupported operation");
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -167,17 +218,6 @@ public class TranslationManager implements TranslationRegistry {
 
     private void addLanguage(Language language) {
         languages.put(language.getLocale(), language);
-    }
-
-    private String translate0(String key, Locale locale) {
-        if (!contains(key)) return null;
-        Language language = languages.get(locale);
-        if (language == null) {
-            if (locale == defaultLocale) return null;
-            return translate0(key, defaultLocale);
-        }
-
-        return language.translate(key);
     }
 
 }

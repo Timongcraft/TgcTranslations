@@ -55,23 +55,21 @@ When using Maven, make sure to build directly with Maven and not with your IDE c
 
 ### Gradle
 
-```groovy
+```kotlin
 plugins {
-    id 'io.github.goooler.shadow' version '8.1.8'
+    id("com.gradleup.shadow") version "8.3.5"
 }
 
 repositories {
-    maven {
-        url "https://repo.skyblocksquad.de/repo"
-    }
+    maven("https://repo.skyblocksquad.de/repo")
 }
 
 dependencies {
-    implementation 'de.timongcraft:TgcTranslations:LATEST_VERSION'
+    implementation("de.timongcraft:TgcTranslations:LATEST_VERSION")
 }
 
-shadowJar {
-    // Replace 'com.yourpackage' with the package of your project 
-    relocate 'de.timongcraft.tgctranslations', 'com.yourpackage.tgctranslations'
+tasks.shadowJar {
+    // Replace 'com.yourpackage' with the package of your project
+    relocate("de.timongcraft.tgctranslations", "com.yourpackage.tgctranslations")
 }
 ```
