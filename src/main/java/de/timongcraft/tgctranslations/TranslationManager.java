@@ -44,7 +44,19 @@ public class TranslationManager implements TranslationRegistry {
     private final Key identificationKey;
     private final String resourceFolderPath;
     private final @Nullable Path overridesFolderPath;
-    private Locale defaultLocale = Locale.getDefault();
+    private Locale defaultLocale; // parameter > Locale.getDefault() > Locale.US > first loaded
+
+    /**
+     * Constructs a new {@code TranslationManager}.
+     *
+     * @param logger            the logger used to report issues during language loading
+     * @param keyManager        the translation key manager used to validate keys
+     * @param identificationKey the {@link Key} identifying this translation manager
+     */
+    public TranslationManager(Logger logger, TranslationKeyManager keyManager, Key identificationKey,
+                              String resourceFolderPath) {
+        this(logger, keyManager, identificationKey, resourceFolderPath, null);
+    }
 
     /**
      * Constructs a new {@code TranslationManager}.
@@ -61,7 +73,27 @@ public class TranslationManager implements TranslationRegistry {
         this.keyManager = Objects.requireNonNull(keyManager, "keyManager");
         this.identificationKey = Objects.requireNonNull(identificationKey, "identificationKey");
         this.resourceFolderPath = Objects.requireNonNull(resourceFolderPath, "resourceFolderPath");
-        this.overridesFolderPath = Objects.requireNonNull(overridesFolderPath, "overridesFolderPath");
+        this.overridesFolderPath = overridesFolderPath;
+    }
+
+    /**
+     * Constructs a new {@code TranslationManager}.
+     *
+     * @param logger              the logger used to report issues during language loading
+     * @param keyManager          the translation key manager used to validate keys
+     * @param identificationKey   the {@link Key} identifying this translation manager
+     * @param defaultLocale       the optional {@link Locale} used as default
+     * @param overridesFolderPath the {@link Path} to the overrides language folder (null to disable overrides)
+     */
+    public TranslationManager(Logger logger, TranslationKeyManager keyManager, Key identificationKey, @Nullable Locale defaultLocale,
+                              String resourceFolderPath,
+                              @Nullable Path overridesFolderPath) {
+        this.logger = Objects.requireNonNull(logger, "logger");
+        this.keyManager = Objects.requireNonNull(keyManager, "keyManager");
+        this.identificationKey = Objects.requireNonNull(identificationKey, "identificationKey");
+        this.defaultLocale = defaultLocale;
+        this.resourceFolderPath = Objects.requireNonNull(resourceFolderPath, "resourceFolderPath");
+        this.overridesFolderPath = overridesFolderPath;
     }
 
     public void loadLanguages() {
@@ -100,6 +132,8 @@ public class TranslationManager implements TranslationRegistry {
      */
     public void load() {
         loadLanguages();
+
+        setDefaultLocale(defaultLocale);
 
         GlobalTranslator.translator().addSource(this);
     }
@@ -183,6 +217,26 @@ public class TranslationManager implements TranslationRegistry {
         }
 
         return language.translate(key);
+    }
+
+    private void setDefaultLocale(@Nullable Locale locale) {
+        if (locale != null) return;
+
+        Locale systemLocale = Locale.getDefault();
+
+        for (Locale loadedLocale : languages.keySet()) {
+            if (!loadedLocale.equals(systemLocale)) continue;
+            defaultLocale = systemLocale;
+            return;
+        }
+
+        for (Locale loadedLocale : languages.keySet()) {
+            if (!loadedLocale.equals(Locale.US)) continue;
+            defaultLocale = Locale.US;
+            return;
+        }
+
+        defaultLocale = languages.keySet().stream().findFirst().orElse(Locale.US);
     }
 
     /**
