@@ -13,6 +13,11 @@ public interface Language {
     Locale getLocale();
 
     /**
+     * Checks if the language contains the specified key.
+     */
+    boolean containsKey(String key);
+
+    /**
      * Translates the given translation key to its corresponding value.
      * <p>
      * Note: The value may use {@link net.kyori.adventure.text.minimessage.MiniMessage} formatting.

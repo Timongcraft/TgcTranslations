@@ -94,6 +94,14 @@ public class StreamBasedLanguage implements Language {
      * {@inheritDoc}
      */
     @Override
+    public boolean containsKey(String key) {
+        return translations.containsKey(key);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public @Nullable String translate(String key) {
         return translations.get(key);
     }

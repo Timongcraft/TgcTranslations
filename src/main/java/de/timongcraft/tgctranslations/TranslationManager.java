@@ -11,9 +11,10 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.renderer.TranslatableComponentRenderer;
 import net.kyori.adventure.translation.GlobalTranslator;
-import net.kyori.adventure.translation.TranslationRegistry;
+import net.kyori.adventure.translation.Translator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,10 +36,10 @@ import java.util.stream.Stream;
 
 /**
  * Manages translations for different locales using {@link Language} implementations.
- * Implements {@link TranslationRegistry} to provide translation lookups through net.kiory's adventure library.
+ * Implements {@link Translator} to provide translation lookups through net.kiory's adventure library.
  */
 @SuppressWarnings("unused")
-public class TranslationManager implements TranslationRegistry {
+public class TranslationManager implements Translator {
 
     public final TranslatableComponentRenderer<Locale> renderer = TranslatableComponentRenderer.usingTranslationSource(this);
     private final Map<Locale, Language> languages = new HashMap<>();
@@ -133,6 +135,7 @@ public class TranslationManager implements TranslationRegistry {
      * Registers this translation manager to be used in global translations.
      */
     public void load() {
+        languages.clear();
         loadLanguages();
 
         if (defaultLocale == null) {
@@ -152,11 +155,20 @@ public class TranslationManager implements TranslationRegistry {
     }
 
     /**
-     * {@inheritDoc}
+     * Checks whether the specified key is registered in this manager.
      */
-    @Override
-    public boolean contains(@NotNull String key) {
+    public boolean contains(String key) {
         return keyManager.containsKey(key);
+    }
+
+    /**
+     * Checks whether a translation is explicitly registered for the given key and {@link Locale}.
+     */
+    public boolean contains(String key, Locale locale) {
+        if (!contains(key)) return false;
+        Language language = languages.get(locale);
+        if (language == null) return false;
+        return language.containsKey(key);
     }
 
     /**
@@ -171,7 +183,7 @@ public class TranslationManager implements TranslationRegistry {
      * Unused method placeholder.
      */
     @Override
-    public MessageFormat translate(@NotNull String key, @NotNull Locale locale) {
+    public @Nullable MessageFormat translate(@NotNull String key, @NotNull Locale locale) {
         return null;
     }
 
@@ -179,7 +191,7 @@ public class TranslationManager implements TranslationRegistry {
      * {@inheritDoc}
      */
     @Override
-    public Component translate(TranslatableComponent component, @NotNull Locale locale) {
+    public @Nullable Component translate(TranslatableComponent component, @NotNull Locale locale) {
         final String literalTranslation = translateLiteral(component.key(), locale);
         if (literalTranslation == null) return null;
 
@@ -192,7 +204,7 @@ public class TranslationManager implements TranslationRegistry {
             for (TranslationArgument argument : component.arguments())
                 translatedArguments.add(GlobalTranslator.render(argument.asComponent(), locale));
             resultingComponent = MiniMessage.miniMessage().deserialize(literalTranslation,
-                    new MiniMessageArgumentTag(translatedArguments));
+                    new ComponentArgumentTag(translatedArguments));
         }
 
         for (Map.Entry<TextDecoration, TextDecoration.State> entry : component.decorations().entrySet())
@@ -213,7 +225,7 @@ public class TranslationManager implements TranslationRegistry {
     }
 
     private String translateLiteral(String key, Locale locale) {
-        if (!contains(key)) return null;
+        if (!keyManager.containsKey(key)) return null;
         Language language = languages.get(locale);
         if (language == null) {
             if (locale == defaultLocale) return null;
@@ -246,34 +258,20 @@ public class TranslationManager implements TranslationRegistry {
     }
 
     /**
-     * {@inheritDoc}
+     * Sets the default locale used by this manager.
+     *
+     * @param locale the locale to use a default
      */
-    @Override
-    public void defaultLocale(@NotNull Locale locale) {
+    public void defaultLocale(Locale locale) {
         defaultLocale = locale;
-    }
-
-    /**
-     * Unused method placeholder.
-     */
-    @Override
-    public void register(@NotNull String key, @NotNull Locale locale, @NotNull MessageFormat format) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Unused method placeholder.
-     */
-    @Override
-    public void unregister(@NotNull String key) {
-        throw new UnsupportedOperationException();
     }
 
     /**
      * Retrieves the map of loaded languages.
      */
+    @UnmodifiableView
     public Map<Locale, Language> getLanguages() {
-        return languages;
+        return Collections.unmodifiableMap(languages);
     }
 
     private void addLanguage(Language language) {
