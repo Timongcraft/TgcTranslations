@@ -9,6 +9,7 @@ import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.TranslationArgument;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.renderer.TranslatableComponentRenderer;
 import net.kyori.adventure.translation.GlobalTranslator;
 import net.kyori.adventure.translation.TranslationRegistry;
 import org.jetbrains.annotations.NotNull;
@@ -38,6 +39,7 @@ import java.util.stream.Stream;
 @SuppressWarnings("unused")
 public class TranslationManager implements TranslationRegistry {
 
+    public final TranslatableComponentRenderer<Locale> renderer = TranslatableComponentRenderer.usingTranslationSource(this);
     private final Map<Locale, Language> languages = new HashMap<>();
     private final Logger logger;
     private final TranslationKeyManager keyManager;
@@ -97,7 +99,7 @@ public class TranslationManager implements TranslationRegistry {
     }
 
     public void loadLanguages() {
-        Map<String, InputStream> internalDefinitions = ResourceUtils.getFileStreams(resourceFolderPath, logger);
+        Map<String, InputStream> internalDefinitions = ResourceUtils.getFileStreams(resourceFolderPath, keyManager.getClass().getClassLoader(), logger);
         Map<String, Path> overrideDefinitions = new HashMap<>();
 
         if (overridesFolderPath != null && Files.exists(overridesFolderPath)) {
@@ -133,7 +135,9 @@ public class TranslationManager implements TranslationRegistry {
     public void load() {
         loadLanguages();
 
-        setDefaultLocale(defaultLocale);
+        if (defaultLocale == null) {
+            calcDefaultLocale();
+        }
 
         GlobalTranslator.translator().addSource(this);
     }
@@ -219,9 +223,7 @@ public class TranslationManager implements TranslationRegistry {
         return language.translate(key);
     }
 
-    private void setDefaultLocale(@Nullable Locale locale) {
-        if (locale != null) return;
-
+    private void calcDefaultLocale() {
         Locale systemLocale = Locale.getDefault();
 
         for (Locale loadedLocale : languages.keySet()) {
@@ -237,6 +239,10 @@ public class TranslationManager implements TranslationRegistry {
         }
 
         defaultLocale = languages.keySet().stream().findFirst().orElse(Locale.US);
+    }
+
+    public Locale defaultLocale() {
+        return defaultLocale;
     }
 
     /**

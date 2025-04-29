@@ -1,8 +1,10 @@
 package de.timongcraft.tgctranslations.utils;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,13 +18,21 @@ import java.util.stream.Stream;
 
 public class ResourceUtils {
 
-    public static Map<String, InputStream> getFileStreams(String folderPath, Logger logger) {
-        ClassLoader classLoader = ResourceUtils.class.getClassLoader();
-
+    public static Map<String, InputStream> getFileStreams(String folderPath, ClassLoader classLoader, Logger logger) {
         try {
             URL resourceUrl = classLoader.getResource(folderPath);
             if (resourceUrl != null) {
-                try (FileSystem fileSystem = FileSystems.newFileSystem(resourceUrl.toURI(), Collections.emptyMap())) {
+                FileSystem fileSystem = null;
+                boolean createdFileSystem = false;
+                try {
+                    URI resourceUri = resourceUrl.toURI();
+                    try {
+                        fileSystem = FileSystems.getFileSystem(resourceUri);
+                    } catch (FileSystemNotFoundException e) {
+                        fileSystem = FileSystems.newFileSystem(resourceUri, Collections.emptyMap());
+                        createdFileSystem = true;
+                    }
+
                     Path folderRootPath = fileSystem.getPath(folderPath);
                     try (Stream<Path> paths = Files.walk(folderRootPath, 1)) {
                         return paths.filter(path -> !path.equals(folderRootPath))
@@ -35,6 +45,10 @@ public class ResourceUtils {
                                 .collect(Collectors.toMap(
                                         Map.Entry::getKey,
                                         Map.Entry::getValue));
+                    }
+                } finally {
+                    if (createdFileSystem && fileSystem != null) {
+                        fileSystem.close();
                     }
                 }
             } else {
