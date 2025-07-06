@@ -1,16 +1,18 @@
-package my.package.translations;
+package my.package;
 
 import de.timongcraft.tgctranslations.TranslationKeyManager;
+import net.kyori.adventure.key.Key;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class TranslationKey implements TranslationKeyManager {
 
+    static final Key IDENTIFICATION_KEY = Key.key("my_plugin", "translations");
+    private static final String NAMESPACE = IDENTIFICATION_KEY.namespace() + ":";
     private static final List<String> RAW_ADVENTURE_KEYS = new ArrayList<>();
-    private static final String NAMESPACE = TranslationManager.IDENTIFICATION_KEY.namespace() + ":";
 
-    public static final String MY_TRANSLATION = registerKey("xy.my_translation");
+    public static final String MY_TRANSLATION_KEY = registerKey("xy.my_translation");
 
     @Override
     public boolean containsKey(String translationKey) {

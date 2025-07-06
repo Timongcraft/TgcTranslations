@@ -1,5 +1,7 @@
 package de.timongcraft.tgctranslations.utils;
 
+import org.jetbrains.annotations.Unmodifiable;
+
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
@@ -18,6 +20,7 @@ import java.util.stream.Stream;
 
 public class ResourceUtils {
 
+    @Unmodifiable
     public static Map<String, InputStream> getFileStreams(String folderPath, ClassLoader classLoader, Logger logger) {
         try {
             URL resourceUrl = classLoader.getResource(folderPath);

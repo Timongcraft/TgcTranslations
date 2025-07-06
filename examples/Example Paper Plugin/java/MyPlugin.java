@@ -1,16 +1,16 @@
 package my.package;
 
-import my.package.translations.TranslationManager;
-import net.kyori.adventure.text.Component;
+import de.timongcraft.tgctranslations.TranslationManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MyPlugin extends JavaPlugin {
 
-    private TranslationManager translationManager;
+    private static TranslationManager translationManager;
 
     @Override
     public void onLoad() {
-        translationManager = new TranslationManager(getLogger(), getDataFolder().toPath().resolve("lang"));
+        translationManager = new TranslationManager(getLogger(), new TranslationKey(), TranslationKey.IDENTIFICATION_KEY,
+                "my_plugin/lang", getDataPath().resolve("lang"));
         translationManager.load();
     }
 
