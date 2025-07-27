@@ -8,6 +8,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.ArgumentQueue;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,7 +32,9 @@ public class ComponentArgumentTag implements TagResolver {
     }
 
     @Override
-    public Tag resolve(@NotNull String tagName, ArgumentQueue arguments, @NotNull Context ctx) throws ParsingException {
+    public @Nullable Tag resolve(@NotNull String tagName, @NotNull ArgumentQueue arguments, @NotNull Context ctx) throws ParsingException {
+        if (!has(tagName)) return null;
+
         int index;
         if (arguments.hasNext()) {
             index = arguments.pop().asInt()
