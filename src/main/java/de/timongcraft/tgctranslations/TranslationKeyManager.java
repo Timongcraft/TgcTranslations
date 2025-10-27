@@ -1,15 +1,16 @@
 package de.timongcraft.tgctranslations;
 
+import net.kyori.adventure.key.Key;
+
 public interface TranslationKeyManager {
+
+    static String getPrefix(Key identificationKey) {
+        return identificationKey.namespace() + ".";
+    }
 
     /**
      * Checks if the key manager contains the specified key.
      */
-    boolean containsKey(String key);
-
-    /**
-     * Checks if the key manager contains the specified raw key i.e. without namespace.
-     */
-    boolean containsRawKey(String rawKey);
+    boolean hasKey(String key);
 
 }

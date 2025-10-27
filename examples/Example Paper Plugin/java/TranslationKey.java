@@ -9,30 +9,24 @@ import java.util.List;
 public class TranslationKey implements TranslationKeyManager {
 
     static final Key IDENTIFICATION_KEY = Key.key("my_plugin", "translations");
-    private static final String NAMESPACE = IDENTIFICATION_KEY.namespace() + ":";
-    private static final List<String> RAW_ADVENTURE_KEYS = new ArrayList<>();
+    private static final List<String> ADVENTURE_KEYS = new ArrayList<>();
 
     public static final String MY_TRANSLATION_KEY = registerKey("xy.my_translation");
 
-    @Override
-    public boolean containsKey(String translationKey) {
-        for (String rawAdventureKey : RAW_ADVENTURE_KEYS)
-            if ((NAMESPACE + rawAdventureKey).equals(translationKey))
-                return true;
-        return false;
+    private static String registerKey(String rawKey) {
+        String key = TranslationKeyManager.getPrefix(IDENTIFICATION_KEY) + rawKey;
+        ADVENTURE_KEYS.add(key);
+        return key;
     }
 
+    TranslationKey() {}
+
     @Override
-    public boolean containsRawKey(String rawTranslationKey) {
-        for (String rawAdventureKey : RAW_ADVENTURE_KEYS)
-            if (rawAdventureKey.equals(rawTranslationKey))
+    public boolean hasKey(String key) {
+        for (String fqKey : ADVENTURE_KEYS)
+            if (fqKey.equals(key))
                 return true;
         return false;
-    }
-
-    private static String registerKey(String rawAdventureKey) {
-        RAW_ADVENTURE_KEYS.add(rawAdventureKey);
-        return NAMESPACE + rawAdventureKey;
     }
 
 }

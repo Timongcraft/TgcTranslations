@@ -2,6 +2,7 @@ package de.timongcraft.tgctranslations;
 
 import de.timongcraft.tgctranslations.lang.Language;
 import de.timongcraft.tgctranslations.lang.StreamBasedLanguage;
+import de.timongcraft.tgctranslations.resolver.ComponentArgumentTag;
 import de.timongcraft.tgctranslations.utils.ResourceUtils;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -46,6 +47,7 @@ public class TranslationManager implements Translator {
     private final Logger logger;
     private final TranslationKeyManager keyManager;
     private final Key identificationKey;
+    private final String prefix;
     private final String resourceFolderPath;
     private final @Nullable Path overridesFolderPath;
     private Locale defaultLocale; // parameter > Locale.getDefault() > Locale.US > first loaded
@@ -56,6 +58,7 @@ public class TranslationManager implements Translator {
      * @param logger            the logger used to report issues during language loading
      * @param keyManager        the translation key manager used to validate keys
      * @param identificationKey the {@link Key} identifying this translation manager
+     * @implNote The namespace of {@link #identificationKey}, followed by a dot, is used as a prefix for all translation keys.
      */
     public TranslationManager(Logger logger, TranslationKeyManager keyManager, Key identificationKey,
                               String resourceFolderPath) {
@@ -69,15 +72,12 @@ public class TranslationManager implements Translator {
      * @param keyManager          the translation key manager used to validate keys
      * @param identificationKey   the {@link Key} identifying this translation manager
      * @param overridesFolderPath the {@link Path} to the overrides language folder (null to disable overrides)
+     * @implNote The namespace of {@link #identificationKey}, followed by a dot, is used as a prefix for all translation keys.
      */
     public TranslationManager(Logger logger, TranslationKeyManager keyManager, Key identificationKey,
                               String resourceFolderPath,
                               @Nullable Path overridesFolderPath) {
-        this.logger = Objects.requireNonNull(logger, "logger");
-        this.keyManager = Objects.requireNonNull(keyManager, "keyManager");
-        this.identificationKey = Objects.requireNonNull(identificationKey, "identificationKey");
-        this.resourceFolderPath = Objects.requireNonNull(resourceFolderPath, "resourceFolderPath");
-        this.overridesFolderPath = overridesFolderPath;
+        this(logger, keyManager, identificationKey, null, resourceFolderPath, overridesFolderPath);
     }
 
     /**
@@ -88,6 +88,7 @@ public class TranslationManager implements Translator {
      * @param identificationKey   the {@link Key} identifying this translation manager
      * @param defaultLocale       the optional {@link Locale} used as default
      * @param overridesFolderPath the {@link Path} to the overrides language folder (null to disable overrides)
+     * @implNote The namespace of {@link #identificationKey}, followed by a dot, is used as a prefix for all translation keys.
      */
     public TranslationManager(Logger logger, TranslationKeyManager keyManager, Key identificationKey, @Nullable Locale defaultLocale,
                               String resourceFolderPath,
@@ -98,6 +99,7 @@ public class TranslationManager implements Translator {
         this.defaultLocale = defaultLocale;
         this.resourceFolderPath = Objects.requireNonNull(resourceFolderPath, "resourceFolderPath");
         this.overridesFolderPath = overridesFolderPath;
+        this.prefix = TranslationKeyManager.getPrefix(identificationKey);
     }
 
     public void loadLanguages() {
@@ -123,7 +125,7 @@ public class TranslationManager implements Translator {
             addLanguage(new StreamBasedLanguage(
                     logger,
                     keyManager,
-                    identificationKey.namespace(),
+                    prefix,
                     Locale.forLanguageTag(fileName.substring(0, fileName.length() - 5).replace("_", "-")),
                     internalDefinitions.get(fileName),
                     overrideDefinitions.get(fileName)
@@ -157,18 +159,18 @@ public class TranslationManager implements Translator {
     /**
      * Checks whether the specified key is registered in this manager.
      */
-    public boolean contains(String key) {
-        return keyManager.containsKey(key);
+    public boolean hasKey(String key) {
+        return keyManager.hasKey(key);
     }
 
     /**
      * Checks whether a translation is explicitly registered for the given key and {@link Locale}.
      */
-    public boolean contains(String key, Locale locale) {
-        if (!contains(key)) return false;
+    public boolean hasKey(String key, Locale locale) {
+        if (!hasKey(key)) return false;
         Language language = languages.get(locale);
         if (language == null) return false;
-        return language.containsKey(key);
+        return language.hasKey(key);
     }
 
     /**
@@ -224,8 +226,8 @@ public class TranslationManager implements Translator {
         }
     }
 
-    private String translateLiteral(String key, Locale locale) {
-        if (!keyManager.containsKey(key)) return null;
+    private @Nullable String translateLiteral(String key, Locale locale) {
+        if (!hasKey(key)) return null;
         Language language = languages.get(locale);
         if (language == null) {
             if (locale == defaultLocale) return null;

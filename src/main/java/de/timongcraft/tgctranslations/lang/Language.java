@@ -15,7 +15,7 @@ public interface Language {
     /**
      * Checks if the language contains the specified key.
      */
-    boolean containsKey(String key);
+    boolean hasKey(String key);
 
     /**
      * Translates the given translation key to its corresponding value.

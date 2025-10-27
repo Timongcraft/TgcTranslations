@@ -35,24 +35,23 @@ public class StreamBasedLanguage implements Language {
      *
      * @param logger       the logger used to report issues during loading
      * @param keyManager   the translation key manager used to validate keys
-     * @param namespace    the namespace for the translation keys
+     * @param prefix       the prefix for the translation keys
      * @param locale       the locale of this language
      * @param stream       the optional stream of the internal language definition
      * @param overridePath the optional path of the override language file
      */
-    public StreamBasedLanguage(Logger logger, TranslationKeyManager keyManager, String namespace,
+    public StreamBasedLanguage(Logger logger, TranslationKeyManager keyManager, String prefix,
                                Locale locale, @Nullable InputStream stream,
                                @Nullable Path overridePath) {
         this.locale = locale;
 
-        namespace = namespace.endsWith(":") ? namespace : namespace + ":";
-
-        if (stream != null)
-            loadTranslations(stream, Source.INTERNAL, namespace, logger, keyManager);
+        if (stream != null) {
+            loadTranslations(stream, Source.INTERNAL, prefix, logger, keyManager);
+        }
 
         if (overridePath != null && Files.exists(overridePath)) {
             try {
-                loadTranslations(new FileInputStream(overridePath.toFile()), Source.USER_OVERRIDES, namespace, logger, keyManager);
+                loadTranslations(new FileInputStream(overridePath.toFile()), Source.USER_OVERRIDES, prefix, logger, keyManager);
             } catch (FileNotFoundException e) {
                 logger.log(Level.WARNING, Source.USER_OVERRIDES.logName + " for language " + locale.toLanguageTag()
                         + " specified but not existent");
@@ -60,17 +59,17 @@ public class StreamBasedLanguage implements Language {
         }
     }
 
-    private void loadTranslations(InputStream stream, Source source, String namespace, Logger logger, TranslationKeyManager keyManager) {
+    private void loadTranslations(InputStream stream, Source source, String prefix, Logger logger, TranslationKeyManager keyManager) {
         try (InputStreamReader reader = new InputStreamReader(stream)) {
             for (Map.Entry<String, JsonElement> entry : JsonParser.parseReader(reader).getAsJsonObject().entrySet()) {
                 if (entry.getValue() instanceof JsonPrimitive primitive && primitive.isString()) {
-                    if (!keyManager.containsRawKey(entry.getKey())) {
+                    if (!keyManager.hasKey(prefix + entry.getKey())) {
                         logger.log(Level.WARNING, source.logName + " for language " + locale.toLanguageTag()
                                 + " contain unknown translation (Key: " + entry.getKey() + ")");
                         continue;
                     }
 
-                    translations.put(namespace + entry.getKey(), primitive.getAsString());
+                    translations.put(prefix + entry.getKey(), primitive.getAsString());
                 } else {
                     logger.log(Level.WARNING, source.logName + " for language " + locale.toLanguageTag()
                             + " contain unknown json entry (Key: " + entry.getKey() + ")");
@@ -94,7 +93,7 @@ public class StreamBasedLanguage implements Language {
      * {@inheritDoc}
      */
     @Override
-    public boolean containsKey(String key) {
+    public boolean hasKey(String key) {
         return translations.containsKey(key);
     }
 

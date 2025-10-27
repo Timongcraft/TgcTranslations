@@ -1,4 +1,4 @@
-package de.timongcraft.tgctranslations;
+package de.timongcraft.tgctranslations.resolver;
 
 import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.minimessage.Context;
